@@ -1,0 +1,729 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Послание в конверте</title>
+<style>
+  :root{
+    --bg1:#eaf6ff;
+    --bg2:#d6ecff;
+    --card:#f7fbff;
+    --blue:#2b6cb0;
+    --blue-soft:#8ec5f0;
+    --ink:#1d3557;
+    --gold:#ffd166;
+    --shadow:0 10px 30px rgba(43,108,176,.18);
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{height:100%}
+  body{
+    margin:0;
+    font-family:'Segoe UI',system-ui,-apple-system,'Helvetica Neue',Arial,sans-serif;
+    color:var(--ink);
+    background:linear-gradient(160deg,var(--bg1),var(--bg2));
+    display:flex;align-items:center;justify-content:center;
+    min-height:100dvh;
+    padding:14px;
+    overflow:hidden;
+  }
+  #app{
+    width:100%;max-width:430px;
+    height:min(92dvh,820px);
+    position:relative;
+    display:flex;flex-direction:column;
+  }
+
+  .card{
+    background:var(--card);
+    border:3px solid var(--blue);
+    border-radius:22px;
+    box-shadow:var(--shadow);
+    position:relative;
+    padding:26px 20px 22px;
+    text-align:center;
+  }
+  .card::before{
+    content:"🎀";
+    position:absolute;
+    top:-18px;left:50%;
+    transform:translateX(-50%);
+    font-size:30px;
+    filter:drop-shadow(0 2px 2px rgba(0,0,0,.15));
+  }
+
+  .screen{
+    position:absolute;inset:0;
+    display:none;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    gap:16px;
+    padding:8px;
+    animation:fade .45s ease;
+  }
+  .screen.active{display:flex}
+  @keyframes fade{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+
+  #progress{
+    position:absolute;top:0;left:0;right:0;
+    display:flex;justify-content:center;gap:9px;
+    padding:10px 0 4px;
+    font-size:16px;letter-spacing:2px;
+    color:var(--blue-soft);
+    pointer-events:none;
+    z-index:5;
+  }
+  #progress .dot{transition:color .35s, transform .35s}
+  #progress .dot.done{color:var(--blue);transform:scale(1.15)}
+
+  .envelope{
+    width:190px;height:130px;
+    position:relative;
+    cursor:pointer;
+    animation:float 3.2s ease-in-out infinite;
+    filter:drop-shadow(0 12px 18px rgba(43,108,176,.25));
+  }
+  @keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-9px)}}
+  .env-body{
+    position:absolute;inset:0;
+    background:linear-gradient(160deg,#fdfeff,#dceeff);
+    border:3px solid var(--blue);
+    border-radius:10px;
+  }
+  .env-flap{
+    position:absolute;top:0;left:0;right:0;
+    height:70px;
+    background:linear-gradient(160deg,#bfe0fb,#a4d2f7);
+    border:3px solid var(--blue);
+    border-bottom:none;
+    border-radius:10px 10px 0 0;
+    clip-path:polygon(0 0,100% 0,50% 100%);
+    transition:transform .6s ease;
+    transform-origin:top center;
+  }
+  .env-heart{
+    position:absolute;top:52%;left:50%;
+    transform:translate(-50%,-50%);
+    font-size:30px;
+    transition:opacity .4s;
+  }
+  .envelope.open .env-flap{transform:rotateX(180deg)}
+  .envelope.open .env-heart{opacity:0}
+
+  .hint{font-size:15px;color:#5b7fa6;max-width:320px;line-height:1.45}
+
+  .btn{
+    border:3px solid var(--blue);
+    background:linear-gradient(180deg,#ffffff,#e3f1ff);
+    color:var(--blue);
+    font-size:17px;font-weight:700;
+    padding:13px 34px;
+    border-radius:16px;
+    cursor:pointer;
+    box-shadow:0 6px 0 rgba(43,108,176,.25);
+    transition:transform .12s, box-shadow .12s;
+    position:relative;
+  }
+  .btn::after{content:"🎀";position:absolute;top:-12px;right:-8px;font-size:18px}
+  .btn:active{transform:translateY(4px);box-shadow:0 2px 0 rgba(43,108,176,.25)}
+  .btn.small{padding:10px 20px;font-size:15px}
+
+  .stars-map{
+    display:grid;
+    grid-template-columns:repeat(3,1fr);
+    gap:18px;
+    width:100%;
+    max-width:300px;
+    justify-items:center;
+  }
+  .star{
+    width:64px;height:64px;
+    border-radius:50%;
+    border:3px solid var(--blue);
+    background:radial-gradient(circle at 35% 30%,#ffffff,#dceeff);
+    display:flex;align-items:center;justify-content:center;
+    font-size:26px;
+    color:var(--blue-soft);
+    cursor:pointer;
+    transition:transform .2s, background .3s, color .3s, box-shadow .3s;
+    position:relative;
+  }
+  .star:active{transform:scale(.93)}
+  .star.done{
+    background:radial-gradient(circle at 35% 30%,#fff6d6,#ffd166);
+    color:#b8860b;
+    box-shadow:0 0 18px rgba(255,209,102,.8);
+  }
+  .star.current{
+    box-shadow:0 0 0 4px rgba(142,197,240,.55);
+    animation:pulse 1.6s infinite;
+  }
+  @keyframes pulse{0%,100%{box-shadow:0 0 0 4px rgba(142,197,240,.55)}50%{box-shadow:0 0 0 9px rgba(142,197,240,.25)}}
+
+  .task-title{font-size:17px;line-height:1.45;max-width:330px}
+  .answer-row{display:flex;gap:8px;width:100%;max-width:330px}
+  input[type=text]{
+    flex:1;
+    border:3px solid var(--blue-soft);
+    border-radius:14px;
+    padding:12px 14px;
+    font-size:17px;
+    color:var(--ink);
+    outline:none;
+    background:#fff;
+    text-align:center;
+  }
+  input[type=text]:focus{border-color:var(--blue)}
+
+  .rebus{
+    display:flex;align-items:flex-end;justify-content:center;
+    gap:6px;flex-wrap:wrap;
+    font-size:40px;font-weight:800;color:var(--blue);
+    padding:10px 0;
+  }
+  .rebus .pic{
+    display:flex;flex-direction:column;align-items:center;
+    font-size:44px;line-height:1;
+  }
+  .rebus .quotes{font-size:16px;color:var(--blue);letter-spacing:2px;margin-top:-4px}
+
+  .scrambled{
+    font-size:26px;font-weight:800;letter-spacing:4px;
+    color:var(--blue);
+    background:#eaf5ff;
+    border:3px dashed var(--blue-soft);
+    border-radius:14px;
+    padding:14px 18px;
+  }
+
+  .puzzle{
+    width:270px;height:270px;
+    display:grid;
+    grid-template-columns:repeat(3,1fr);
+    grid-template-rows:repeat(3,1fr);
+    gap:3px;
+    background:var(--blue);
+    border:3px solid var(--blue);
+    border-radius:14px;
+    overflow:hidden;
+    touch-action:manipulation;
+  }
+  .tile{
+    background-repeat:no-repeat;
+    background-color:#eaf5ff;
+    cursor:pointer;
+    user-select:none;
+    transition:transform .15s;
+    border-radius:4px;
+  }
+  .tile.selected{outline:4px solid var(--gold);outline-offset:-4px;transform:scale(.94)}
+
+  .words{
+    display:flex;flex-wrap:wrap;gap:8px;justify-content:center;
+    max-width:330px;
+  }
+  .word{
+    border:3px solid var(--blue-soft);
+    background:#fff;
+    border-radius:12px;
+    padding:8px 14px;
+    font-size:17px;font-weight:600;color:var(--blue);
+    cursor:pointer;
+    transition:transform .12s, background .2s;
+  }
+  .word:active{transform:scale(.94)}
+  .word.used{opacity:.3;pointer-events:none}
+  .built{
+    min-height:48px;
+    width:100%;max-width:330px;
+    border:3px dashed var(--blue-soft);
+    border-radius:14px;
+    padding:10px;
+    font-size:18px;font-weight:700;color:var(--ink);
+    display:flex;align-items:center;justify-content:center;
+    background:#f2f9ff;
+  }
+
+  .emoji-row{display:flex;gap:14px;flex-wrap:wrap;justify-content:center}
+  .emoji-btn{
+    width:64px;height:64px;
+    border:3px solid var(--blue-soft);
+    border-radius:50%;
+    background:#fff;
+    font-size:32px;
+    display:flex;align-items:center;justify-content:center;
+    cursor:pointer;
+    transition:transform .15s, border-color .2s, box-shadow .2s;
+  }
+  .emoji-btn:active{transform:scale(.9)}
+  .emoji-btn.wrong{border-color:#e63946;animation:shake .4s}
+  @keyframes shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-6px)}75%{transform:translateX(6px)}}
+
+  .modal{
+    position:absolute;inset:0;
+    background:rgba(214,236,255,.75);
+    backdrop-filter:blur(3px);
+    display:none;
+    align-items:center;justify-content:center;
+    padding:20px;
+    z-index:20;
+  }
+  .modal.active{display:flex;animation:fade .3s ease}
+  .modal .card{max-width:340px;animation:pop .35s ease}
+  @keyframes pop{from{transform:scale(.85);opacity:0}to{transform:scale(1);opacity:1}}
+
+  .letter{
+    background:#fff;
+    border:3px solid var(--blue);
+    border-radius:20px;
+    padding:24px 18px;
+    max-height:70dvh;
+    overflow-y:auto;
+    text-align:left;
+    font-size:16px;line-height:1.6;
+    white-space:pre-line;
+    box-shadow:var(--shadow);
+    position:relative;
+    margin-top:20px;
+  }
+  .letter::before{content:"🎀";position:absolute;top:-16px;left:50%;transform:translateX(-50%);font-size:28px}
+  .letter p{margin:0 0 12px}
+  .sign{text-align:right;font-weight:700;color:var(--blue);margin-top:14px}
+
+  .toast{
+    position:absolute;bottom:16px;left:50%;transform:translateX(-50%);
+    background:var(--blue);color:#fff;
+    padding:10px 18px;border-radius:14px;
+    font-size:14px;font-weight:600;
+    opacity:0;pointer-events:none;transition:opacity .3s;
+    z-index:30;max-width:330px;text-align:center;
+  }
+  .toast.show{opacity:1}
+</style>
+</head>
+<body>
+<div id="app">
+
+  <div id="progress" aria-hidden="true"></div>
+
+  <section class="screen active" id="screen-envelope">
+    <div class="envelope" id="envelope">
+      <div class="env-body"></div>
+      <div class="env-flap"></div>
+      <div class="env-heart">💌</div>
+    </div>
+    <p class="hint" id="envelopeHint">Нажми на конверт</p>
+    <button class="btn" id="startBtn" style="display:none">Начать</button>
+  </section>
+
+  <section class="screen" id="screen-map">
+    <p class="task-title">Каждый правильный ответ приближает тебя к главному сообщению</p>
+    <div class="stars-map" id="starsMap"></div>
+  </section>
+
+  <section class="screen" id="screen-task">
+    <div class="card" style="width:100%;max-width:360px">
+      <p class="task-title" id="taskIntro"></p>
+      <div id="taskBody" style="display:flex;flex-direction:column;align-items:center;gap:14px;margin-top:10px"></div>
+    </div>
+  </section>
+
+  <section class="screen" id="screen-final">
+    <div class="letter" id="letterText"></div>
+    <button class="btn small" id="restartBtn" style="margin-top:14px">Пройти снова</button>
+  </section>
+
+  <div class="modal" id="modal">
+    <div class="card">
+      <p id="modalText" class="task-title" style="font-size:18px"></p>
+      <button class="btn small" id="modalBtn" style="margin-top:14px">Дальше</button>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+</div>
+
+<script>
+/* ===================== ДАННЫЕ ===================== */
+const TOTAL_STEPS = 5;
+
+/* ВАЖНО: замените эту строку на "puzzle.jpg" (если картинка лежит рядом)
+   или на base64-строку вида "data:image/jpeg;base64,..." */
+const PUZZLE_IMAGE = "puzzle.jpg";
+
+const TASKS = [
+  {
+    intro: "Первый шаг всегда самый важный. Найди ключ, открывающий путь.",
+    type: "input",
+    render: renderRebus,
+    check: ans => normalize(ans) === "ты перец",
+    success: "Самый крутой перец в моей жизни! Продолжай в том же духе😉"
+  },
+  {
+    intro: "Некоторые слова спрятаны. Будь внимательным.",
+    type: "input",
+    render: renderScrambled,
+    check: ans => normalize(ans) === "мечты сбываются",
+    success: "А я смотрю ты настойчив. Оставайся таким же, и все твои мечты также сбудутся!"
+  },
+  {
+    intro: "Чтобы увидеть суть, нужно смотреть не на отдельные части, а целиком.",
+    type: "puzzle",
+    render: renderPuzzle,
+    success: "Молодец! Ты все ближе и ближе к самому главному."
+  },
+  {
+    intro: "Почти все готово. Но некоторые слова решили пошалить, помоги им встать на место.",
+    type: "words",
+    render: renderWords,
+    check: arr => arr.join(" ") === "мне так хорошо с тобой",
+    success: "Молодец!!! Остался последний рывок, я верю, ты справишься!"
+  },
+  {
+    intro: "Осталось выбрать лишь то, что откроет послание.",
+    type: "emoji",
+    render: renderEmoji,
+    success: "Поздравляю! Ты прошел все этапы"
+  }
+];
+
+/* ===================== СОСТОЯНИЕ ===================== */
+let currentStep = 0;
+let solved = 0;
+
+const $ = id => document.getElementById(id);
+const progressEl = $("progress");
+const starsMapEl = $("starsMap");
+
+/* ===================== ИНДИКАТОР ТОЧЕК ===================== */
+function renderProgress(){
+  progressEl.innerHTML = "";
+  for(let i=0;i<TOTAL_STEPS;i++){
+    const s = document.createElement("span");
+    s.className = "dot" + (i < solved ? " done" : "");
+    s.textContent = "●";
+    progressEl.appendChild(s);
+  }
+}
+
+/* ===================== ЭКРАНЫ ===================== */
+function show(screenId){
+  document.querySelectorAll(".screen").forEach(s=>s.classList.remove("active"));
+  $(screenId).classList.add("active");
+}
+function toast(msg){
+  const t = $("toast");
+  t.textContent = msg;
+  t.classList.add("show");
+  clearTimeout(t._timer);
+  t._timer = setTimeout(()=>t.classList.remove("show"), 2200);
+}
+
+/* ===================== КОНВЕРТ ===================== */
+const envelope = $("envelope");
+const startBtn = $("startBtn");
+let envelopeClicks = 0;
+
+envelope.addEventListener("click", ()=>{
+  envelopeClicks++;
+  if(envelopeClicks === 1){
+    envelope.classList.add("open");
+    $("envelopeHint").textContent =
+      "Тебе пришло послание. Чтобы прочитать его, нужно пройти путь загадок. Каждый правильный ответ приближает тебя к главному сообщению.";
+  } else {
+    startBtn.style.display = "inline-block";
+    $("envelopeHint").textContent = "Нажми «Начать», когда будешь готов";
+  }
+});
+startBtn.addEventListener("click", ()=>{
+  renderProgress();
+  buildStarsMap();
+  show("screen-map");
+});
+
+/* ===================== КАРТА ЗВЁЗД ===================== */
+function buildStarsMap(){
+  starsMapEl.innerHTML = "";
+  for(let i=0;i<TOTAL_STEPS;i++){
+    const st = document.createElement("div");
+    st.className = "star" + (i < solved ? " done" : "");
+    st.textContent = i < solved ? "★" : "☆";
+    st.dataset.index = i;
+    if(i === solved && i < TASKS.length){
+      st.classList.add("current");
+      st.addEventListener("click", ()=> openTask(i));
+    }
+    starsMapEl.appendChild(st);
+  }
+}
+function refreshStars(){
+  buildStarsMap();
+}
+
+/* ===================== ЗАДАНИЯ ===================== */
+function openTask(index){
+  currentStep = index;
+  const task = TASKS[index];
+  $("taskIntro").textContent = task.intro;
+  $("taskBody").innerHTML = "";
+  task.render($("taskBody"), task);
+  show("screen-task");
+}
+
+/* ===================== МОДАЛКА ===================== */
+function showModal(text, cb){
+  $("modalText").textContent = text;
+  $("modal").classList.add("active");
+  $("modalBtn").onclick = ()=>{
+    $("modal").classList.remove("active");
+    cb && cb();
+  };
+}
+
+/* ===================== ЗАВЕРШЕНИЕ ЭТАПА ===================== */
+function completeStep(task){
+  solved++;
+  renderProgress();
+  showModal(task.success, ()=>{
+    if(currentStep < TASKS.length - 1){
+      refreshStars();
+      show("screen-map");
+    } else {
+      solved = TOTAL_STEPS;
+      renderProgress();
+      refreshStars();
+      showFinal();
+    }
+  });
+}
+
+/* ===================== ФИНАЛ ===================== */
+function showFinal(){
+  $("letterText").innerHTML = `
+    <p>Приветик!</p>
+    <p>Прости мене, пожалуйста, когда я что-то делаю не так или говорю не то, что надо.</p>
+    <p>Я благодарна, что ты есть в моей жизни и очень боюсь тебя потерять. Ты делаешь мои дни лучше, ярче и светлее и наполняешь пребывание на этом тупом факультете смыслом. Я верю, что какие трудности перед нами не стояли бы, мы обязательно со всем справимся.</p>
+    <p>Я очень сильно тебя люблю!</p>
+    <p class="sign">Леночка 💞</p>
+  `;
+  show("screen-final");
+}
+$("restartBtn").addEventListener("click", ()=>{
+  solved = 0; currentStep = 0; envelopeClicks = 0;
+  envelope.classList.remove("open");
+  startBtn.style.display = "none";
+  $("envelopeHint").textContent = "Нажми на конверт";
+  renderProgress();
+  show("screen-envelope");
+});
+
+/* ===================== ХЕЛПЕРЫ ===================== */
+function normalize(s){
+  return (s||"").toLowerCase().replace(/\s+/g," ").trim();
+}
+
+/* ===================== РЕНДЕРЫ ===================== */
+
+/* --- 1. Ребус --- */
+function renderRebus(container, task){
+  const rebus = document.createElement("div");
+  rebus.className = "rebus";
+  rebus.innerHTML = `
+    <span>ТЫ</span>
+    <span class="pic">🍑<span class="quotes">”””</span></span>
+    <span>ЕЦ</span>
+  `;
+  container.appendChild(rebus);
+
+  const row = document.createElement("div");
+  row.className = "answer-row";
+  const input = document.createElement("input");
+  input.type = "text";
+  input.placeholder = "Введи ответ";
+  input.autocomplete = "off";
+  const btn = document.createElement("button");
+  btn.className = "btn small";
+  btn.textContent = "Ввод";
+  row.append(input, btn);
+  container.appendChild(row);
+
+  const submit = ()=>{
+    if(task.check(input.value)){
+      completeStep(task);
+    } else {
+      toast("Попробуй ещё раз");
+      input.value = "";
+      input.focus();
+    }
+  };
+  btn.onclick = submit;
+  input.addEventListener("keydown", e=>{ if(e.key === "Enter") submit(); });
+}
+
+/* --- 2. Перестановка букв --- */
+function renderScrambled(container, task){
+  const box = document.createElement("div");
+  box.className = "scrambled";
+  box.textContent = "ытечм авюсстбыя";
+  container.appendChild(box);
+
+  const row = document.createElement("div");
+  row.className = "answer-row";
+  const input = document.createElement("input");
+  input.type = "text";
+  input.placeholder = "Введи фразу";
+  input.autocomplete = "off";
+  const btn = document.createElement("button");
+  btn.className = "btn small";
+  btn.textContent = "Ввод";
+  row.append(input, btn);
+  container.appendChild(row);
+
+  const submit = ()=>{
+    if(task.check(input.value)){
+      completeStep(task);
+    } else {
+      toast("Попробуй ещё раз");
+      input.value = "";
+      input.focus();
+    }
+  };
+  btn.onclick = submit;
+  input.addEventListener("keydown", e=>{ if(e.key === "Enter") submit(); });
+}
+
+/* --- 3. Пазл 3×3 с исходной картинкой --- */
+function renderPuzzle(container, task){
+  let state = [4,0,7,2,8,1,6,3,5];
+  let selected = null;
+
+  const grid = document.createElement("div");
+  grid.className = "puzzle";
+  container.appendChild(grid);
+
+  function draw(){
+    grid.innerHTML = "";
+    state.forEach((fragmentIdx, pos)=>{
+      const t = document.createElement("div");
+      t.className = "tile";
+      const col = fragmentIdx % 3;
+      const row = Math.floor(fragmentIdx / 3);
+      t.style.backgroundImage = `url("${PUZZLE_IMAGE}")`;
+      t.style.backgroundSize = "300% 300%";
+      t.style.backgroundPosition = `${col * 50}% ${row * 50}%`;
+      if(selected === pos) t.classList.add("selected");
+      t.onclick = ()=>{
+        if(selected === null){
+          selected = pos;
+        } else if(selected === pos){
+          selected = null;
+        } else {
+          [state[selected], state[pos]] = [state[pos], state[selected]];
+          selected = null;
+          draw();
+          if(isSolved()) completeStep(task);
+          return;
+        }
+        draw();
+      };
+      grid.appendChild(t);
+    });
+  }
+  function isSolved(){
+    return state.every((fragmentIdx, pos) => fragmentIdx === pos);
+  }
+  draw();
+
+  const tip = document.createElement("p");
+  tip.className = "hint";
+  tip.textContent = "Нажми на две плитки, чтобы поменять их местами";
+  container.appendChild(tip);
+}
+
+/* --- 4. Сборка фразы --- */
+function renderWords(container, task){
+  const words = ["хорошо","с","мне","так","тобой"];
+  let built = [];
+
+  const builtBox = document.createElement("div");
+  builtBox.className = "built";
+  builtBox.textContent = "…";
+  container.appendChild(builtBox);
+
+  const pool = document.createElement("div");
+  pool.className = "words";
+  container.appendChild(pool);
+
+  const checkBtn = document.createElement("button");
+  checkBtn.className = "btn small";
+  checkBtn.textContent = "Проверить";
+  container.appendChild(checkBtn);
+
+  function renderPool(){
+    pool.innerHTML = "";
+    words.forEach((w,i)=>{
+      const b = document.createElement("div");
+      b.className = "word";
+      b.textContent = w;
+      if(built.includes(i)) b.classList.add("used");
+      b.onclick = ()=>{
+        if(!built.includes(i)){
+          built.push(i);
+          update();
+        }
+      };
+      pool.appendChild(b);
+    });
+  }
+  function update(){
+    builtBox.textContent = built.length ? built.map(i=>words[i]).join(" ") : "…";
+    renderPool();
+  }
+  builtBox.onclick = ()=>{ built.pop(); update(); };
+
+  checkBtn.onclick = ()=>{
+    if(task.check(built.map(i=>words[i]))){
+      completeStep(task);
+    } else {
+      toast("Попробуй ещё раз");
+      built = [];
+      update();
+    }
+  };
+  renderPool();
+}
+
+/* --- 5. Эмодзи --- */
+function renderEmoji(container, task){
+  const options = [
+    {e:"☀️", ok:false},
+    {e:"❤️", ok:true},
+    {e:"🗝️", ok:false},
+    {e:"🍄", ok:false}
+  ];
+  const row = document.createElement("div");
+  row.className = "emoji-row";
+  options.forEach(o=>{
+    const b = document.createElement("button");
+    b.className = "emoji-btn";
+    b.textContent = o.e;
+    b.onclick = ()=>{
+      if(o.ok){
+        completeStep(task);
+      } else {
+        b.classList.add("wrong");
+        toast("Попробуй ещё раз");
+        setTimeout(()=>b.classList.remove("wrong"), 500);
+      }
+    };
+    row.appendChild(b);
+  });
+  container.appendChild(row);
+}
+
+/* ===================== СТАРТ ===================== */
+renderProgress();
+</script>
+</body>
+</html>
